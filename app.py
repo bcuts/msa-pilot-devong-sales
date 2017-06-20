@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from database import db, Purchase
 
 app = Flask(__name__)
@@ -17,6 +17,23 @@ def list_all_purchases():
     serialized = [p.serialize() for p in purchases]
 
     return jsonify(serialized)
+
+
+@app.route('/purchases', methods=['POST', 'PUT'])
+def insert_new_purchases():
+    json = request.get_json(silent=True)
+    if not json or not 'userId' in json or not 'branchId' in json:
+        return jsonify({
+            'status': 'Invalid request'
+        }), 400
+
+    p = Purchase(status='Preparing', user_id=json['userId'], branch_id=json['branchId'])
+    db.session.add(p)
+    db.session.commit()
+    return jsonify({
+        'status': 'OK',
+        'purchaseId': p.id
+    }), 201
 
 
 if __name__ == '__main__':

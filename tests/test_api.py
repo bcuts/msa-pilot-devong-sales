@@ -43,6 +43,36 @@ class ApiTest(TestCase):
         self.assertEqual(data[0]['userId'], 'scott')
         self.assertEqual(data[0]['branchId'], 'seoul_dobong')
 
+    def test_insert_new_purchases_with_empty_request(self):
+        response = self.client.put('/purchases')
+
+        self.assert400(response)
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Invalid request')
+
+    def test_insert_new_purchases_with_missing_key(self):
+        data = {'uuuuuserIddd': 'scott'}
+
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+
+        self.assert400(response)
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Invalid request')
+
+    def test_insert_new_purchases(self):
+        data = {
+            'userId': 'scott',
+            'branchId': 'seoul_dobong'
+        }
+
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'OK')
 
 
 if __name__ == '__main__':
