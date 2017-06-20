@@ -36,6 +36,16 @@ def insert_new_purchases():
     }), 201
 
 
+@app.route('/purchases/<purchase_id>', methods=['GET'])
+def get_purchase(purchase_id):
+    p = Purchase.query.filter(Purchase.id == purchase_id).first()
+    if not p:
+        return jsonify({
+            'status': 'Not found'
+        }), 404
+
+    return jsonify(p.serialize()), 200
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./development.db'

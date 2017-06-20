@@ -26,9 +26,9 @@ class ApiTest(TestCase):
 
     def test_list_all_purchases_with_no_purchase(self):
         response = self.client.get('/purchases')
-        data = json.loads(response.data)
+        response_data = json.loads(response.data)
 
-        self.assertEqual(len(data), 0)
+        self.assertEqual(len(response_data), 0)
 
     def test_list_all_purchases(self):
         p = Purchase('Delivering', 'scott', 'seoul_dobong')
@@ -36,17 +36,17 @@ class ApiTest(TestCase):
         db.session.commit()
 
         response = self.client.get('/purchases')
-        data = json.loads(response.data)
+        response_data = json.loads(response.data)
 
-        self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['status'], 'Delivering')
-        self.assertEqual(data[0]['userId'], 'scott')
-        self.assertEqual(data[0]['branchId'], 'seoul_dobong')
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0]['status'], 'Delivering')
+        self.assertEqual(response_data[0]['userId'], 'scott')
+        self.assertEqual(response_data[0]['branchId'], 'seoul_dobong')
 
     def test_insert_new_purchases_with_empty_request(self):
         response = self.client.put('/purchases')
-
         self.assert400(response)
+
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'Invalid request')
 
@@ -56,8 +56,8 @@ class ApiTest(TestCase):
         response = self.client.put('/purchases',
                                    data=json.dumps(data),
                                    content_type='application/json')
-
         self.assert400(response)
+
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'Invalid request')
 
@@ -73,6 +73,29 @@ class ApiTest(TestCase):
 
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'OK')
+        self.assertEqual(response_data['purchaseId'], 1)
+
+    def test_get_purchase_with_inexistent_record(self):
+        response = self.client.get('/purchases/777')
+        self.assert404(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Not found')
+
+    def test_get_purchase(self):
+        p = Purchase('Delivering', 'scott', 'seoul_dobong')
+        db.session.add(p)
+        db.session.commit()
+
+        self.assertEqual(p.id, 1)
+
+        response = self.client.get('/purchases/1')
+        self.assert200(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Delivering')
+        self.assertEqual(response_data['userId'], 'scott')
+        self.assertEqual(response_data['branchId'], 'seoul_dobong')
 
 
 if __name__ == '__main__':
