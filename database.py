@@ -18,6 +18,7 @@ class Purchase(db.Model):
         self.status = status
         self.user_id = user_id
         self.branch_id = branch_id
+        self.created_at = datetime.now()
 
     def __repr__(self):
         return '<Purchase by {} at {}>'.format(self.user, self.created_at)

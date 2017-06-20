@@ -37,7 +37,6 @@ class ApiTest(TestCase):
 
         response = self.client.get('/purchases')
         data = json.loads(response.data)
-        print(data)
 
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['status'], 'Delivering')
