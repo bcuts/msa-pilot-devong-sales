@@ -31,16 +31,18 @@ class ApiTest(TestCase):
         self.assertEqual(len(data), 0)
 
     def test_list_all_purchases(self):
-        p = Purchase("Delivering", "scott")
+        p = Purchase('Delivering', 'scott', 'seoul_dobong')
         db.session.add(p)
         db.session.commit()
 
         response = self.client.get('/purchases')
         data = json.loads(response.data)
+        print(data)
 
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['status'], 'Delivering')
         self.assertEqual(data[0]['userId'], 'scott')
+        self.assertEqual(data[0]['branchId'], 'seoul_dobong')
 
 
 
