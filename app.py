@@ -4,6 +4,9 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from database import db, Purchase
 
+import config
+from delegate import branch
+
 app = Flask(__name__)
 CORS(app)       # TODO Avoid this later!
 
@@ -24,12 +27,20 @@ def list_all_purchases():
 @app.route('/purchases', methods=['POST', 'PUT'])
 def insert_new_purchases():
     json = request.get_json(silent=True)
-    if not json or not 'userId' in json or not 'branchId' in json:
+    if not json or 'userId' not in json or 'branchId' not in json:
         return jsonify({
             'status': 'Invalid request'
         }), 400
 
-    p = Purchase(status='Preparing', user_id=json['userId'], branch_id=json['branchId'])
+    branch_id = json['branchId']
+    endpoint = config.get_branch_api_endpoint()
+
+    if not branch.get(branch_id, endpoint):
+        return jsonify({
+            'status': 'Invalid branch id'
+        }), 400
+
+    p = Purchase(status='Preparing', user_id=json['userId'], branch_id=branch_id)
     db.session.add(p)
     db.session.commit()
     return jsonify({

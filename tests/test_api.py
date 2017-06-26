@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from unittest import mock
 
 from database import db, Purchase
 from flask_testing import TestCase
@@ -61,7 +62,12 @@ class ApiTest(TestCase):
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'Invalid request')
 
-    def test_insert_new_purchases(self):
+    @mock.patch('delegate.branch.get')
+    def test_insert_new_purchases(self, mock_branch_get):
+        mock_branch_get.return_value = {
+            'id': 'seoul_dobong'
+        }
+
         data = {
             'userId': 'scott',
             'branchId': 'seoul_dobong'
@@ -70,10 +76,29 @@ class ApiTest(TestCase):
         response = self.client.put('/purchases',
                                    data=json.dumps(data),
                                    content_type='application/json')
+        self.assertEqual(response.status_code, 201)
 
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'OK')
         self.assertEqual(response_data['purchaseId'], 1)
+
+    @mock.patch('delegate.branch.get')
+    def test_insert_new_purchases_with_invalid_branch_id(self, mock_branch_get):
+        mock_branch_get.return_value = None
+
+        data = {
+            'userId': 'scott',
+            'branchId': 'seoul_dobong'
+        }
+
+
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+        self.assert400(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Invalid branch id')
 
     def test_get_purchase_with_inexistent_record(self):
         response = self.client.get('/purchases/777')
