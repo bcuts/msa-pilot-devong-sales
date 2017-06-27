@@ -3,11 +3,13 @@
 import json
 import unittest
 from unittest import mock
+from unittest.mock import ANY, call
 
 from database import db, Purchase
 from flask_testing import TestCase
 
 import app as subject
+from delegate.exceptions import IntegrationException
 
 
 class ApiTest(TestCase):
@@ -62,16 +64,37 @@ class ApiTest(TestCase):
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'Invalid request')
 
+    @staticmethod
+    def request_body_to_insert():
+        return {
+            'userId': 'scott',
+            'branchId': 'seoul_dobong',
+            'details': [
+                {
+                    'productId': 'product_first',
+                    'count': 1
+                }, {
+                    'productId': 'product_second',
+                    'count': 2
+                }
+            ]
+        }
+
     @mock.patch('delegate.branch.get')
-    def test_insert_new_purchases(self, mock_branch_get):
+    @mock.patch('delegate.product.get')
+    def test_insert_new_purchases(self, mock_product_get, mock_branch_get):
         mock_branch_get.return_value = {
             'id': 'seoul_dobong'
         }
+        mock_product_get.side_effect = [{
+            'id': 'product_first'
+        }, {
+            'id': 'product_second'
+        }, {
+            'id': 'product_third'
+        }]
 
-        data = {
-            'userId': 'scott',
-            'branchId': 'seoul_dobong'
-        }
+        data = self.request_body_to_insert()
 
         response = self.client.put('/purchases',
                                    data=json.dumps(data),
@@ -82,15 +105,31 @@ class ApiTest(TestCase):
         self.assertEqual(response_data['status'], 'OK')
         self.assertEqual(response_data['purchaseId'], 1)
 
+        mock_branch_get.assert_called_with('seoul_dobong', ANY)
+        mock_product_get.assert_has_calls([call('product_first', ANY), call('product_second', ANY)])
+
     @mock.patch('delegate.branch.get')
-    def test_insert_new_purchases_with_invalid_branch_id(self, mock_branch_get):
-        mock_branch_get.return_value = None
+    def test_insert_new_purchases_with_branch_api_error(self, mock_branch_get):
+        mock_branch_get.side_effect = IntegrationException("Something wrong")
 
         data = {
             'userId': 'scott',
             'branchId': 'seoul_dobong'
         }
 
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+        self.assert500(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Something wrong with Branch API. Please contact Administrator')
+
+    @mock.patch('delegate.branch.get')
+    def test_insert_new_purchases_with_invalid_branch_id(self, mock_branch_get):
+        mock_branch_get.return_value = None
+
+        data = self.request_body_to_insert()
 
         response = self.client.put('/purchases',
                                    data=json.dumps(data),
@@ -99,6 +138,38 @@ class ApiTest(TestCase):
 
         response_data = json.loads(response.data)
         self.assertEqual(response_data['status'], 'Invalid branch id')
+
+    @mock.patch('delegate.branch.get')
+    @mock.patch('delegate.product.get')
+    def test_insert_new_purchases_with_product_api_error(self, mock_product_get, mock_branch_get):
+        mock_branch_get.return_value = {'id': 'seoul_dobong'}
+        mock_product_get.side_effect = IntegrationException("Something wrong")
+
+        data = self.request_body_to_insert()
+
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+        self.assert500(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Something wrong with Product API. Please contact Administrator')
+
+    @mock.patch('delegate.branch.get')
+    @mock.patch('delegate.product.get')
+    def test_insert_new_purchases_with_invalid_product_id(self, mock_product_get, mock_branch_get):
+        mock_branch_get.return_value = {'id': 'seoul_dobong'}
+        mock_product_get.return_value = None
+
+        data = self.request_body_to_insert()
+
+        response = self.client.put('/purchases',
+                                   data=json.dumps(data),
+                                   content_type='application/json')
+        self.assert400(response)
+
+        response_data = json.loads(response.data)
+        self.assertEqual(response_data['status'], 'Invalid product id')
 
     def test_get_purchase_with_inexistent_record(self):
         response = self.client.get('/purchases/777')

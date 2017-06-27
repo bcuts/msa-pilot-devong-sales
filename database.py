@@ -26,7 +26,7 @@ class Purchase(db.Model):
     def serialize(self):
         return {
             'id': self.id,
-            'quantities': [pq.serialize() for pq in self.quantities],
+            'details': [pq.serialize() for pq in self.quantities],
             'status': self.status,
             'userId': self.user_id,
             'branchId': self.branch_id,

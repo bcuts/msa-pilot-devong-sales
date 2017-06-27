@@ -5,10 +5,11 @@ from flask_cors import CORS
 from database import db, Purchase
 
 import config
-from delegate import branch
+from delegate import branch, product
+from delegate.exceptions import IntegrationException
 
 app = Flask(__name__)
-CORS(app)       # TODO Avoid this later!
+CORS(app)  # TODO Avoid this later!
 
 
 @app.route('/')
@@ -32,13 +33,30 @@ def insert_new_purchases():
             'status': 'Invalid request'
         }), 400
 
+    # Check branch
     branch_id = json['branchId']
-    endpoint = config.get_branch_api_endpoint()
-
-    if not branch.get(branch_id, endpoint):
+    try:
+        if not branch.get(branch_id, config.get_branch_api_endpoint()):
+            return jsonify({
+                'status': 'Invalid branch id'
+            }), 400
+    except IntegrationException:
         return jsonify({
-            'status': 'Invalid branch id'
-        }), 400
+            'status': 'Something wrong with Branch API. Please contact Administrator'
+        }), 500
+
+    # Check products
+    product_ids = [d['productId'] for d in json['details']]
+    try:
+        for product_id in product_ids:
+            if not product.get(product_id, config.get_product_api_endpoint()):
+                return jsonify({
+                    'status': 'Invalid product id'
+                }), 400
+    except IntegrationException:
+        return jsonify({
+            'status': 'Something wrong with Product API. Please contact Administrator'
+        }), 500
 
     p = Purchase(status='Preparing', user_id=json['userId'], branch_id=branch_id)
     db.session.add(p)
@@ -58,6 +76,7 @@ def get_purchase(purchase_id):
         }), 404
 
     return jsonify(p.serialize()), 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
