@@ -7,4 +7,4 @@ def get(branch_id, endpoint):
     if r.status_code == 200:
         return r.json() if r.content else None
 
-    raise "Request wrong to {}, status_code={}".format(url, r.status_code)
+    raise Exception("Request wrong to {}, status_code={}".format(url, r.status_code))
